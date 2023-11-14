@@ -1,5 +1,6 @@
 #pragma once
 #include <wx/wx.h>
+#include <map>
 class CalculatorFrame : public wxFrame
 {
 public:
@@ -18,6 +19,7 @@ private:
 
 	void OnMouseLeave(wxMouseEvent& event);
 
+	void OnCharHook(wxKeyEvent& event);
 
 	wxTextCtrl* resultText;
 	wxButton* modeButton;

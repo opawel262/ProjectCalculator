@@ -1,34 +1,38 @@
 ﻿#include "MyCalculator.h"
 #include <stack>
+#include <cmath>
+const double PI = 3.14159265358979323846;
 
 bool MyCalculator::isSymbol(char c)
 {
-    if (c == '+' || c == '-' || c == '*' || c == '/' || c == '^') return true;
+    if (c == '+' || c == '-' || c == '*' || c == '/' || c == '%' || c == '^') return true;
     else return false;
 }
 
 int MyCalculator::precedence(char c)
 {
     if (c == '^') return 3;
-    else if (c == '*' || c == '/') return 2;
+    else if (c == '%' || c == '*' || c == '/') return 2;
     else if (c == '+' || c == '-') return 1;
     else return 0;
 }
 
-std::string MyCalculator::workWithMinus(std::string infix)
+
+
+std::string MyCalculator::workWithMinus(const std::string& infix)
 {
-    std::string infixEdit = this->infix;
+    std::string infixEdit = infix;
     std::string formatted = "";
     for (size_t i = 0; i < infixEdit.size(); i++) {
         if (infixEdit[i] == '-' && !isSymbol(infixEdit[i + 1]) && infixEdit[i + 1] != ' ') {
             formatted += "(0 - ";
             i++;
             formatted += infixEdit[i];
-            while (i < infixEdit.size() && infixEdit[i + 1] != ' ') {
+            while (i + 1 < infixEdit.size() && infixEdit[i + 1] != ' ') {
                 formatted += infixEdit[i + 1];
                 i++;
             }
-            formatted.append("(");
+            formatted.append(")");
         }
         else {
             formatted += infixEdit[i];
@@ -37,11 +41,13 @@ std::string MyCalculator::workWithMinus(std::string infix)
     return formatted;
 }
 
+
 std::string MyCalculator::inToPost(const std::string& infix)
 {
     std::string infixEdit = infix;
     std::string postfix;
     std::stack<char> stack;
+    bool isHaveAnyOperator = true;
 
     for (int i = 0; i < infixEdit.size(); i++) {
         if (infixEdit[i] == ' ') {
@@ -69,6 +75,7 @@ std::string MyCalculator::inToPost(const std::string& infix)
             postfix += " " + number;
         }
         else if (isSymbol(infixEdit[i])) {
+            isHaveAnyOperator = false;
             while (!stack.empty() && stack.top() != '(' && precedence(stack.top()) >= precedence(infixEdit[i])) {
                 postfix += " ";
                 postfix += stack.top();
@@ -76,6 +83,9 @@ std::string MyCalculator::inToPost(const std::string& infix)
             }
             stack.push(infixEdit[i]);
         }
+    }
+    if (isHaveAnyOperator) {
+        postfix.append(" "); postfix.append("0 "); postfix.append("+");
     }
 
     while (!stack.empty()) {
@@ -88,9 +98,9 @@ std::string MyCalculator::inToPost(const std::string& infix)
 }
 
 
-double MyCalculator::evaluatePostFix(std::string postfix)
+long double MyCalculator::evaluatePostFix(const std::string& postfix)
 {
-    std::stack<double> stack;
+    std::stack<long double> stack;
     std::string varNumStringToDouble = "";
     double l1, l2;
     for (int i = 0; i < postfix.size(); i++) {
@@ -125,8 +135,11 @@ double MyCalculator::evaluatePostFix(std::string postfix)
                 case '/':
                     stack.push(l2 / l1);
                     break;
+                case '%':
+                    stack.push(fmod(l2, l1));
+                    break;
                 case '^':
-                    stack.push(pow(21, l1));
+                    stack.push(pow(l2, l1));
                     break;
                     //std::cout << "cos sie popsulo w eval_postfix";
                 }
@@ -136,16 +149,140 @@ double MyCalculator::evaluatePostFix(std::string postfix)
     return stack.top();
 }
 
-double MyCalculator::calculateString()
+std::string MyCalculator::changeFunctionsToStringNumber(const std::string& stringToChange)
 {
-    return this->evaluatePostFix(this->inToPost(this->workWithMinus(this->infix)));
-}
+    std::string string_t = stringToChange; // "sin(30) + 20 + cos(20 + 30 + sin(30))
+    std::string string_tEdited = "";
+    for (size_t i = 0; i < string_t.size(); i++) {
+        if (i >= 2) {
+            if (string_t[i - 2] == 's' && string_t[i - 1] == 'i' && string_t[i] == 'n') {
+                string_tEdited.pop_back();
+                string_tEdited.pop_back();
+                i += 2;
+                int counter = 1;
+                std::string string_e; // potrzebujemy to zeby wyciagnac liczby i zapmietac je z funkcji
+                while (1) {
+                    if (string_t[i] == '(') {
+                        counter++;
+                    }
+                    else if (string_t[i] == ')') {
+                        counter--;
+                    }
+                    if (string_t[i] == ')' && counter == 0) {
+                        break;
+                    }
+                    string_e += string_t[i];
+                    i++;
+                }
+                double calculatedNumber = this->calculateString(string_e);
+                double toDegrees = calculatedNumber * (3.14 / 180.0);
+                std::string stringCalculatedNumber = std::to_string(sin(toDegrees));
+                string_tEdited.append(stringCalculatedNumber);
+                if (string_t.size() - 1 == i) break;
+                i++;
 
-void MyCalculator::addChar(const char c)
-{
-    if (c != '(' && c != ')') {
-        this->infix += " ";
+            }
+            if (string_t[i - 2] == 'c' && string_t[i - 1] == 'o' && string_t[i] == 's') {
+                string_tEdited.pop_back();
+                string_tEdited.pop_back();
+                i += 2;
+                int counter = 1;
+                std::string string_e; // potrzebujemy to zeby wyciagnac liczby i zapmietac je z funkcji
+                while (1) {
+                    if (string_t[i] == '(') {
+                        counter++;
+                    }
+                    else if (string_t[i] == ')') {
+                        counter--;
+                    }
+                    if (string_t[i] == ')' && counter == 0) {
+                        break;
+                    }
+                    string_e += string_t[i];
+                    i++;
+                }
+                double calculatedNumber = this->calculateString(string_e);
+                double toDegrees = calculatedNumber * (3.14 / 180.0);
+                std::string stringCalculatedNumber = std::to_string(cos(toDegrees));
+                string_tEdited.append(stringCalculatedNumber);
+                if (string_t.size() - 1 == i) break;
+                i++;
+
+            }
+            if (string_t[i - 2] == 't' && string_t[i - 1] == 'a' && string_t[i] == 'n') {
+                string_tEdited.pop_back();
+                string_tEdited.pop_back();
+                i += 2;
+                int counter = 1;
+                std::string string_e; // potrzebujemy to zeby wyciagnac liczby i zapmietac je z funkcji
+                while (1) {
+                    if (string_t[i] == '(') {
+                        counter++;
+                    }
+                    else if (string_t[i] == ')') {
+                        counter--;
+                    }
+                    if (string_t[i] == ')' && counter == 0) {
+                        break;
+                    }
+                    string_e += string_t[i];
+                    i++;
+                }
+                double calculatedNumber = this->calculateString(string_e);
+                double toDegrees = calculatedNumber * (3.14 / 180.0);
+                std::string stringCalculatedNumber = std::to_string(tan(toDegrees));
+                string_tEdited.append(stringCalculatedNumber);
+                if (string_t.size() - 1 == i) break;
+                i++;
+
+            }
+        }
+        else if (i >= 3) {
+            if (string_t[i - 3] == 's' && string_t[i - 2] == 'q' && string_t[i - 1] == 'r'
+                && string_t[i] == 't') {
+                string_tEdited.pop_back();
+                string_tEdited.pop_back();
+                string_tEdited.pop_back();
+                i += 2;
+                int counter = 1;
+                std::string string_e; // potrzebujemy to zeby wyciagnac liczby i zapmietac je z funkcji
+                while (1) {
+                    if (string_t[i] == '(') {
+                        counter++;
+                    }
+                    else if (string_t[i] == ')') {
+                        counter--;
+                    }
+                    if (string_t[i] == ')' && counter == 0) {
+                        break;
+                    }
+                    string_e += string_t[i];
+                    i++;
+                }
+                double calculatedNumber = this->calculateString(string_e);
+                std::string stringCalculatedNumber = std::to_string(sqrt(calculatedNumber));
+                string_tEdited.append(stringCalculatedNumber);
+                if (string_t.size() - 1 == i) break;
+                i++;
+
+            }
+        }
+        string_tEdited += string_t[i];
     }
-    this->infix += c;
-
+    return string_tEdited;
 }
+
+long double MyCalculator::calculateString()
+{
+    return this->evaluatePostFix(this->inToPost(
+        this->workWithMinus(
+            this->changeFunctionsToStringNumber(this->infix))));
+}
+
+long double MyCalculator::calculateString(const std::string& stringToCalculate)
+{
+    return this->evaluatePostFix(this->inToPost(
+        this->workWithMinus(
+            this->changeFunctionsToStringNumber(stringToCalculate))));
+}
+

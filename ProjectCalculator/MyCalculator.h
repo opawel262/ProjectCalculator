@@ -5,12 +5,14 @@ class MyCalculator
 private:
 	bool isSymbol(char c);
 	int precedence(char c);
-	std::string workWithMinus(std::string infix);
+	std::string workWithMinus(const std::string& infix);
 	std::string inToPost(const std::string& infix);
-	double evaluatePostFix(std::string postfix);
+	long double evaluatePostFix(const std::string& postfix);
+	std::string changeFunctionsToStringNumber(const std::string& stringToChange);
+	long double calculateString(const std::string& stringToCalculate);
+
 public:
 	std::string infix;
-	double calculateString();
-	void addChar(const char c);
+	long double calculateString();
 };
 
