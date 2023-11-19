@@ -8,9 +8,10 @@ bool CalculatorApp::OnInit() {
 
 	wxInitAllImageHandlers();
 
-	CalculatorFrame* frame = new CalculatorFrame("Kalkulator");
-	frame->SetClientSize(400, 600);
-	frame->Center();
-	frame->Show();
+	CalculatorFrame* calculatorFrame = new CalculatorFrame("Kalkulator");
+	calculatorFrame->SetClientSize(400, 600);
+	calculatorFrame->Center();
+	calculatorFrame->Show();
+
 	return true;
 }

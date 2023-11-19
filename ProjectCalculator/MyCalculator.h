@@ -1,8 +1,10 @@
 #pragma once
 #include <string>
-class MyCalculator
+#include "CalculatorMemory.h"
+class MyCalculator : public CalculatorMemory
 {
 private:
+
 	bool isSymbol(char c);
 	int precedence(char c);
 	std::string workWithMinus(const std::string& infix);
@@ -12,7 +14,12 @@ private:
 	long double calculateString(const std::string& stringToCalculate);
 
 public:
+	MyCalculator();
+	bool isValidString(const std::string& str);
+	bool isValidCharacter(char c);
 	std::string infix;
 	long double calculateString();
+	bool isError;
+
 };
 

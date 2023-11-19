@@ -1,117 +1,185 @@
 ﻿#include "CalculatorFrame.h"
-#include "MyCalculator.h"
 #include <wx/wx.h>
 #include <sstream>
 #include <iomanip>
+#include "MyCalculator.h"
+#include "CalculatorMemory.h"
 
-CalculatorFrame::CalculatorFrame(const wxString& title) : wxFrame(nullptr, wxID_ANY, title), isDarkMode(false)
+
+CalculatorFrame::CalculatorFrame(const wxString& title) : wxFrame(nullptr, wxID_ANY, title),
+    isDarkMode(false), isScientificOn(false), isHistoryVisible(false)
 {
+    myCalculator = new MyCalculator;
     mainSizer = new wxBoxSizer(wxVERTICAL);
     buttonSizer = new wxGridSizer(4, 4, 4);
     SetBackgroundColour(wxColour(184, 182, 182));
-    // Text control for displaying the result
     resultText = new wxTextCtrl(this, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxTE_RIGHT | wxTE_MULTILINE | wxTE_WORDWRAP | wxTE_READONLY);
     resultText->SetFont(wxFont(20, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL));
     resultText->SetMargins(7, 7);
     resultText->CanCopy();
     resultText->CanUndo();
 
+    buttonLabels = {
+        "1/(x)", "-(x)", "C", "<=",
+        "(", ")", "%", "=",
+        "7", "8", "9", "/",
+        "4", "5", "6", "*",
+        "1", "2", "3", "-",
+        ".", "0", "^", "+", };
 
-    // Calculator buttons
-    wxString buttonLabels[] = {
-        "-(x)", "10^(x)", "C", "<=",
-        "sin(x)", "cos(x)", "tan(x)", "sqrt(x)",
-        "PI", "e", "1/(x)", "exp(x)",
-        "(", ")", "=","^",
-        "7","8", "9", "/",
-        "4", "5","6", "*",
-        "1", "2", "3","-",
-        ".", "0", "%", "+",
 
-    };
-    const int lenButtonLabels = sizeof(buttonLabels) / sizeof(buttonLabels[0]);
 
-    // Create an array to hold the buttons
-    wxButton* buttons[lenButtonLabels];
+    for (const auto& label : buttonLabels) {
+        wxButton* button = new wxButton(this, wxID_ANY, label, wxDefaultPosition, wxDefaultSize, wxBORDER_NONE);
+        buttonSizer->Add(button, 1, wxEXPAND);
+        button->SetFont(wxFont(12, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL));
+        button->SetBackgroundColour(wxColour(220, 220, 220));
+        button->SetForegroundColour(*wxBLACK);
 
-    for (int i = 0; i < lenButtonLabels; i++) {
-        buttons[i] = new wxButton(this, 1000 + i, buttonLabels[i], wxDefaultPosition, wxDefaultSize, wxBORDER_NONE);
-        buttonSizer->Add(buttons[i], 1, wxEXPAND);
-        buttons[i]->SetFont(wxFont(12, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL));
-        buttons[i]->SetBackgroundColour(wxColour(220, 220, 220));
-        buttons[i]->SetForegroundColour(*wxBLACK);
+        buttons.push_back(button);
     }
-
-    // Create a menu for the burger menu
-    burgerMenu = new wxMenu;
-    darkModeItem = burgerMenu->Append(wxID_ANY, wxT("Dark Mode"));
-    historyItem = burgerMenu->Append(wxID_ANY, wxT("History"));
-
-    // Store the buttons in a class member
-    for (int i = 0; i < lenButtonLabels; i++) {
-        calculatorButtons.push_back(buttons[i]);
-    }
-
-    // Create a menu bar and set it for the frame
-    menuBar = new wxMenuBar;
-    menuBar->Append(burgerMenu, wxT("☰"));
-
-    // Set the menu bar for the frame
-    SetMenuBar(menuBar);
 
     mainSizer->Add(resultText, 1, wxEXPAND | wxALL, 5);
     mainSizer->Add(buttonSizer, 3, wxEXPAND | wxALL, 5);
     SetSizerAndFit(mainSizer);
 
+    burgerMenu = new wxMenu;
+    calculatorMode = burgerMenu->Append(wxID_ANY, wxT("Turn on Scientific mode"));
+    darkModeItem = burgerMenu->Append(wxID_ANY, wxT("Dark Mode"));
+    historyItem = burgerMenu->Append(wxID_ANY, wxT("History"));
+    menuBar = new wxMenuBar;
+    menuBar->Append(burgerMenu, wxT("☰"));
 
-    // Bind event handlers
+    SetMenuBar(menuBar);
+
+
     bindEventHandlers();
+
 }
 
-void CalculatorFrame::ToggleDarkMode(wxCommandEvent& evt) {
-    isDarkMode = !isDarkMode;
+CalculatorFrame::~CalculatorFrame()
+{
+    delete myCalculator;
+}
 
-    // Update the button's style
-    for (wxButton* button : calculatorButtons) {
+
+void CalculatorFrame::ToggleDarkMode(wxCommandEvent& evt) {
+        isDarkMode = !isDarkMode;
+
+        for (wxButton* button : this->buttons) {
+            if (isDarkMode) {
+                button->SetBackgroundColour(wxColour(50, 50, 50));
+                button->SetForegroundColour(*wxWHITE);
+            }
+            else {
+                button->SetBackgroundColour(wxColour(220, 220, 220));
+                button->SetForegroundColour(*wxBLACK);
+            }
+            button->Refresh();
+        }
+
+        if (isDarkMode) {
+            SetBackgroundColour(wxColour(30, 30, 30));
+            resultText->SetBackgroundColour(wxColour(50, 50, 50));
+            resultText->SetForegroundColour(*wxWHITE);
+        }
+        else {
+            SetBackgroundColour(wxColour(184, 182, 182));
+            resultText->SetBackgroundColour(wxNullColour);
+            resultText->SetForegroundColour(wxNullColour);
+        }
+
+
+        resultText->ShowPosition(resultText->GetLastPosition());
+        resultText->ScrollLines(resultText->GetNumberOfLines());
+
+        Refresh();
+   
+}
+
+void CalculatorFrame::ToggleScientificCalculatorMode(wxCommandEvent& evt)
+{
+    isScientificOn = !isScientificOn;
+    calculatorMode->SetItemLabel(isScientificOn ? wxT("Turn off Scientific mode") : wxT("Turn on Scientific mode"));
+
+    // Usunięcie starych przycisków
+    for (wxButton* button : buttons) {
+        button->Destroy();
+    }
+    buttons.clear();
+    for (int i = 0; i < buttonLabels.size() - 1; i++) {
+        buttonLabels.pop_back();
+    }
+
+    // Utworzenie nowych przycisków zgodnie z aktualnym trybem
+    if (isScientificOn) {
+        // Tworzenie przycisków dla Scientific mode
+        buttonLabels = {
+            "-(x)", "10^(x)", "C", "<=",
+            "sin(x)", "cos(x)", "tan(x)", "sqrt(x)",
+            "PI", "e", "1/(x)", "exp(x)",
+            "(", ")", "=","^",
+            "7","8", "9", "/",
+            "4", "5","6", "*",
+            "1", "2", "3","-",
+            ".", "0", "%", "+",
+        };
+    }
+
+    else {
+        // Tworzenie przycisków dla podstawowego trybu kalkulatora
+        buttonLabels = {
+            "1/(x)", "-(x)", "C", "<=",
+            "(", ")", "%", "=",
+            "7", "8", "9", "/",
+            "4", "5", "6", "*",
+            "1", "2", "3", "-",
+            ".", "0", "^", "+",
+        };
+    }
+
+    // Tworzenie nowych przycisków zgodnie z aktualnymi ustawieniami
+    for (const auto& label : buttonLabels) {
+        wxButton* button = new wxButton(this, wxID_ANY, label, wxDefaultPosition, wxDefaultSize, wxBORDER_NONE);
+        buttons.push_back(button);
+
+        // Dodawanie nowych przycisków do sizer'a
+        buttonSizer->Add(button, 1, wxEXPAND);
         if (isDarkMode) {
             button->SetBackgroundColour(wxColour(50, 50, 50));
             button->SetForegroundColour(*wxWHITE);
         }
         else {
-            // Reset the button's colors to their original state
             button->SetFont(wxFont(12, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL));
             button->SetBackgroundColour(wxColour(220, 220, 220));
             button->SetForegroundColour(*wxBLACK);
         }
-
-        // Refresh the button
-        button->Refresh();
     }
-
-    if (isDarkMode) {
-        SetBackgroundColour(wxColour(30, 30, 30));
-        resultText->SetBackgroundColour(wxColour(50, 50, 50));
-        resultText->SetForegroundColour(*wxWHITE);
+    for (wxButton* button : this->buttons) {
+        button->Bind(wxEVT_BUTTON, &CalculatorFrame::onButtonsClicked, this);
+        button->Bind(wxEVT_ENTER_WINDOW, &CalculatorFrame::OnMouseEnter, this);
+        button->Bind(wxEVT_LEAVE_WINDOW, &CalculatorFrame::OnMouseLeave, this);
     }
-    else {
-        SetBackgroundColour(wxColour(184, 182, 182));
-        resultText->SetBackgroundColour(wxNullColour);
-        resultText->SetForegroundColour(wxNullColour);
-    }
+    Bind(wxEVT_CHAR_HOOK, &CalculatorFrame::OnCharHook, this);
 
-    // odswieza ramke
+
+    // Wywołanie Layout() oraz Refresh() dla zastosowania zmian
+    Layout();
     Refresh();
+
 }
 
 void CalculatorFrame::bindEventHandlers()
 {
-    for (wxButton* button : calculatorButtons) {
+    for (wxButton* button : this->buttons) {
         button->Bind(wxEVT_BUTTON, &CalculatorFrame::onButtonsClicked, this);
         button->Bind(wxEVT_ENTER_WINDOW, &CalculatorFrame::OnMouseEnter, this);
         button->Bind(wxEVT_LEAVE_WINDOW, &CalculatorFrame::OnMouseLeave, this);
     }
     Bind(wxEVT_MENU, &CalculatorFrame::ToggleDarkMode, this, darkModeItem->GetId());
     Bind(wxEVT_CHAR_HOOK, &CalculatorFrame::OnCharHook, this);
+    Bind(wxEVT_MENU, &CalculatorFrame::ToggleScientificCalculatorMode, this, calculatorMode->GetId());
+    Bind(wxEVT_MENU, &CalculatorFrame::ToggleHistoryPanel, this, historyItem->GetId());
 
 }
 
@@ -135,7 +203,8 @@ void CalculatorFrame::onButtonsClicked(wxCommandEvent& evt)
                 secondLastElement = result[resultSize - 2];
             }
             // warunek zeby nie wstawialo operacji arytmetycznych nieprawidlowo
-            if ((resultSize == 0) || (resultSize >= 2 || resultSize <= 1) && ((secondLastElement == '-' || secondLastElement == '*' 
+            if ((resultSize == 0) || (resultSize >= 2 || resultSize <= 1) && (result[resultSize - 1] == ' ') 
+                && ((secondLastElement == '-' || secondLastElement == '*'
                 || secondLastElement == '+'|| secondLastElement == '/' || secondLastElement == '^'))) {
                 resultText->AppendText("");
             }
@@ -149,10 +218,6 @@ void CalculatorFrame::onButtonsClicked(wxCommandEvent& evt)
         else if (buttonLabel == "(" || buttonLabel == ")") {
             resultText->AppendText(buttonLabel);
 
-        }
-        else if (buttonLabel == "cos" || buttonLabel == "tan" || buttonLabel == "sin" 
-            || buttonLabel == "sqrt") {
-            
         }
         else if (buttonLabel == "<=") {
             // warunki zeby ladnie usuwalo operatory i nie psulo formatu
@@ -180,113 +245,137 @@ void CalculatorFrame::onButtonsClicked(wxCommandEvent& evt)
         }
         else if (buttonLabel == "=") {
             // warunek zeby nic sie nie dzialo jak wyrazenie nie posiada +, -, ^ itd. do obliczenia jak zrobie potem sin() i inne rzeczy to zmienie!!!!!
-            if (!result.Contains("+") && !result.Contains("-") && !result.Contains("/") && !result.Contains("*") 
-                && !result.Contains("%") && !result.Contains("^"))
+            if (!result.Contains("+") && !result.Contains("-") && !result.Contains("/") && !result.Contains("*")
+                && !result.Contains("%") && !result.Contains("^") && !result.Contains("sin")
+                && !result.Contains("cos") && !result.Contains("tan") && !result.Contains("sqrt"))
             {
                 resultText->AppendText("");
             }
             else {
                 long double resultFromStringCalc;
-                MyCalculator myCalculator;
-                myCalculator.infix = result;
+                std::string addToMemory;   
+                myCalculator->infix = result;
+                addToMemory.append(result);
+                addToMemory.append(" = ");
                 result = "";
-                resultFromStringCalc = myCalculator.calculateString();
-                result.Printf(wxT("%.15Lf"), resultFromStringCalc);
-
-                // usun zbedne zera po przecinku
-                size_t dotPosition = result.Find('.');
-                if (dotPosition != wxString::npos) {
-                    size_t nonZeroPosition = result.find_last_not_of('0');
-                    if (nonZeroPosition > dotPosition) {
-                        result.erase(nonZeroPosition + 1);
-                    }
-                    else {
-                        result.erase(dotPosition);
-                    }
+                resultFromStringCalc = myCalculator->calculateString();
+                if (myCalculator->isError) {
+                    resultText->ChangeValue("incorrect syntax");
                 }
+                else {
+                    result.Printf(wxT("%.15Lf"), resultFromStringCalc);
+                    // usun zbedne zera po przecinku
+                    size_t dotPosition = result.Find('.');
+                    if (dotPosition != wxString::npos) {
+                        size_t nonZeroPosition = result.find_last_not_of('0');
+                        if (nonZeroPosition > dotPosition) {
+                            result.erase(nonZeroPosition + 1);
+                        }
+                        else {
+                            result.erase(dotPosition);
+                        }
+                    }
 
-                // jesli liczba jest całkowita, usun kropke na końcu
-                if (result.EndsWith(wxT("."))) {
-                    result.RemoveLast();
+                    // jesli liczba jest całkowita, usun kropke na końcu
+                    if (result.EndsWith(wxT("."))) {
+                        result.RemoveLast();
+                    }
+                    addToMemory.append(result);
+                    myCalculator->saveMemoryToFile(addToMemory);
                 }
             }
-            resultText->ChangeValue(result);
+            if(!myCalculator->isError) resultText->ChangeValue(result);
+
         }
         else if (buttonLabel == "0" || buttonLabel == "1" || buttonLabel == "2" || buttonLabel == "3" ||
             buttonLabel == "4" || buttonLabel == "5" || buttonLabel == "6" || buttonLabel == "7" ||
             buttonLabel == "8" || buttonLabel == "9") {
             resultText->AppendText(buttonLabel);
         }
-        // przypadki dla tych przyciskow co pobieraja pierwsza ostatnia liczbe z resultTextu i owijaja ją
-        else if (buttonLabel == "10^(x)" || buttonLabel == "sin(x)" ||buttonLabel == "cos(x)" 
-            || buttonLabel == "tan(x)" || buttonLabel == "sqrt(x)" || buttonLabel == "-(x)") {
-             if (!result.IsEmpty()) {
-                 bool isLastClosingBracket = false;
-                 wxString NumberToWrap = "";
-                 int howManyCharactersToDelete = 0;
+        // przypadki dla tych przyciskow z kalkulatora naukowego co pobieraja 
+        // pierwsza ostatnia liczbe z resultTextu i owijaja ją
+        else if (isScientificOn) {
+            if (buttonLabel == "10^(x)" || buttonLabel == "sin(x)" || buttonLabel == "cos(x)"
+                || buttonLabel == "tan(x)" || buttonLabel == "sqrt(x)" || buttonLabel == "-(x)"
+                || buttonLabel =="exp(x)")
+            {
+                if (!result.IsEmpty()) {
+                    bool isLastClosingBracket = false;
+                    wxString NumberToWrap = "";
+                    int howManyCharactersToDelete = 0;
+                    int counter = 0;
+                    if (result[result.size() - 1] == ')') {
+                        isLastClosingBracket = true;
+                        howManyCharactersToDelete += 3;
+                    }
+                    for (int i = result.size() - 1; i >= 0; i--) {
+                        if (isLastClosingBracket) {
+                            if (result[i] == ')') {
+                                counter++;
+                            }
+                            if (result[i] == '(') {
+                                counter--;
+                                howManyCharactersToDelete--;
+                            }
+                            if (result[i] == '(' && counter == 0) {
+                                break;
+                            }
+                            else {
+                                NumberToWrap.Prepend(result[i]);
+                            }
+                        }
+                        else {
+                            if (result[i] == ' ') {
+                                break;
+                            }
+                            else {
+                                NumberToWrap.Prepend(result[i]);
+                            }
+                        }
+                        howManyCharactersToDelete++;
 
-                 if (result[result.size() - 1] == ')') {
-                     isLastClosingBracket = true;
-                     howManyCharactersToDelete += 1;
-                 }
+                    }
 
-                 for (int i = result.size() - 1; i >= 0; i--) {
-                     if (isLastClosingBracket) {
-                         if (result[i] == '(') {
-                             howManyCharactersToDelete--;
-                             break;
-                         }
-                         else {
-                             NumberToWrap.Prepend(result[i]);
-                         }
-                     }
-                     else {
-                         if (result[i] == ' ') {
-                             break;
-                         }
-                         else {
-                             NumberToWrap.Prepend(result[i]);
-                         }
-                     }
-                     howManyCharactersToDelete++;
+                    for (size_t i = 0; i < howManyCharactersToDelete; i++) {
+                        result.RemoveLast();
+                    }
 
-                 }
+                    if (NumberToWrap.IsEmpty()) {
+                        NumberToWrap = "0";
+                    }
+                    if (buttonLabel == "10^(x)") {
+                        result.append("10 ^ (");
+                    }
+                    else if (buttonLabel == "sin(x)") {
+                        result.append("sin(");
+                    }
+                    else if (buttonLabel == "cos(x)") {
+                        result.append("cos(");
+                    }
+                    else if (buttonLabel == "tan(x)") {
+                        result.append("tan(");
+                    }
+                    else if (buttonLabel == "sqrt(x)") {
+                        result.append("sqrt(");
+                    }
+                    else if (buttonLabel == "-(x)") {
+                        result.append("-");
+                        NumberToWrap = "";
+                    }
+                    else if (buttonLabel == "exp(x)") {
+                        result.append("exp(");
+                    }
+                    result.append(NumberToWrap);
+                    if (result[result.size() - 1] != ')') result.append(')');
+                    if (buttonLabel == "-(x)" && NumberToWrap[0] != '(' && result[result.size() - 1] == ')') {
+                        result.RemoveLast();
+                    }
+                    resultText->ChangeValue(result);
+                }
 
-                 for (size_t i = 0; i < howManyCharactersToDelete; i++) {
-                     result.RemoveLast();
-                 }
-
-                 if (NumberToWrap.IsEmpty()) {
-                     NumberToWrap = "0";
-                 }
-
-                 if (buttonLabel == "10^(x)") {
-                     result.append("10 ^ (");
-                 }
-                 if (buttonLabel == "sin(x)") {
-                     result.append("sin(");
-                 }
-                 if (buttonLabel == "cos(x)") {
-                     result.append("cos(");
-                 }
-                 if (buttonLabel == "tan(x)") {
-                     result.append("tan(");
-                 }
-                 if (buttonLabel == "sqrt(x)") {
-                     result.append("sqrt(");
-                 }
-                 if (buttonLabel == "-(x)") {
-                    result.append("-");
-                 }
-                 result.append(NumberToWrap);
-                 if(result[result.size() - 1] != ')') result.append(')');
-                 if (buttonLabel == "-(x)" && NumberToWrap[0] != '(' && result[result.size() - 1] == ')') {
-                     result.RemoveLast();
-                 }
-                 resultText->ChangeValue(result);
-             }
-
+            }
         }
+        
     }
 }
 
@@ -367,10 +456,10 @@ void CalculatorFrame::OnCharHook(wxKeyEvent& event){
     else if (key == '=' && event.ShiftDown()) {
         label = "+";
     }
-
+    
 
     // Znajdź odpowiedni przycisk i wywołaj funkcję obsługi zdarzeń
-    for (wxButton* button : calculatorButtons) {
+    for (wxButton* button : this->buttons) {
         if (button->GetLabel() == label) {
             wxCommandEvent evt(wxEVT_BUTTON, button->GetId());
             evt.SetEventObject(button);
@@ -381,3 +470,13 @@ void CalculatorFrame::OnCharHook(wxKeyEvent& event){
 
     event.Skip();
 }
+
+void CalculatorFrame::ToggleHistoryPanel(wxCommandEvent& evt) {
+    isHistoryVisible = !isHistoryVisible;
+
+    Layout(); // Re-layout to adjust the visibility changes
+    Refresh(); // Refresh to apply changes
+    evt.Skip();
+}
+
+

@@ -21,11 +21,13 @@
   <ItemGroup>
     <ClInclude Include="CalculatorApp.h" />
     <ClInclude Include="CalculatorFrame.h" />
+    <ClInclude Include="CalculatorMemory.h" />
     <ClInclude Include="MyCalculator.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CalculatorApp.cpp" />
     <ClCompile Include="CalculatorFrame.cpp" />
+    <ClCompile Include="CalculatorMemory.cpp" />
     <ClCompile Include="MyCalculator.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
