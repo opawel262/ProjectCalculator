@@ -6,6 +6,7 @@ class CalculatorMemory
 public:
 	std::vector<std::string> getVectorMemory();
 	void saveMemoryToFile(const std::string& operation);
+	void deleteMemory();
 	CalculatorMemory();
 	
 private:

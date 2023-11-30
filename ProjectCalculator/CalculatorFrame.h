@@ -11,6 +11,7 @@ public:
 	CalculatorFrame(const wxString& title);
 	virtual ~CalculatorFrame();
 
+
 private:
 	void ToggleDarkMode(wxCommandEvent& evt);
 
@@ -26,7 +27,12 @@ private:
 
 	void OnCharHook(wxKeyEvent& event);
 
+	void updateHistory();
+
 	void ToggleHistoryPanel(wxCommandEvent& evt);
+
+	void onButtonClearHistory(wxCommandEvent& evt);
+
 
 	bool isDarkMode;
 	bool isScientificOn;
@@ -39,8 +45,9 @@ private:
 	wxButton* button;
 	std::vector<wxButton*> calculatorButtons;
 	wxButton* darkModeToggle;
+	wxBoxSizer* calculatorSizer;
+	wxBoxSizer* historySizer;
 	wxBoxSizer* mainSizer;
-	wxBoxSizer* memorySizer;
 	wxGridSizer* buttonSizer;
 	wxMenu* burgerMenu;
 	wxMenuItem* darkModeItem;
@@ -49,6 +56,7 @@ private:
 	wxMenuBar* menuBar;
 	wxPanel* historyPanel;
 	wxPanel* calculatorPanel;
+	wxButton* deleteMemoryButton;
 	std::vector<wxTextCtrl*> textCtrlList;
 
 };

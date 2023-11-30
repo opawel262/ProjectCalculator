@@ -10,10 +10,28 @@ CalculatorFrame::CalculatorFrame(const wxString& title) : wxFrame(nullptr, wxID_
     isDarkMode(false), isScientificOn(false), isHistoryVisible(false)
 {
     myCalculator = new MyCalculator;
-    mainSizer = new wxBoxSizer(wxVERTICAL);
+    calculatorPanel = new wxPanel(this, wxID_ANY);
+    historyPanel = new wxPanel(this, wxID_ANY);
+    calculatorSizer = new wxBoxSizer(wxVERTICAL);
+    historySizer = new wxBoxSizer(wxVERTICAL);
     buttonSizer = new wxGridSizer(4, 4, 4);
     SetBackgroundColour(wxColour(184, 182, 182));
-    resultText = new wxTextCtrl(this, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxTE_RIGHT | wxTE_MULTILINE | wxTE_WORDWRAP | wxTE_READONLY);
+    mainSizer = new wxBoxSizer(wxVERTICAL);
+    historyPanel->Hide();
+    deleteMemoryButton = new wxButton(historyPanel, wxID_ANY, "Clear history");
+    deleteMemoryButton->SetFont(wxFont(12, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL));
+    deleteMemoryButton->SetBackgroundColour(wxColour(220, 220, 220));
+    deleteMemoryButton->SetForegroundColour(*wxBLACK);
+    historySizer->Add(deleteMemoryButton, 0, wxALIGN_CENTER || wxALL, 5);
+
+    std::vector<std::string> vectorsMemory = myCalculator->getVectorMemory();
+    for (std::string historyOne : vectorsMemory) {
+        wxTextCtrl* textctrl = new wxTextCtrl(historyPanel, wxID_ANY, historyOne);
+        historySizer->Add(textctrl, 0, wxEXPAND | wxALL, 5);
+        textCtrlList.push_back(textctrl);
+    }
+
+    resultText = new wxTextCtrl(calculatorPanel, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxTE_RIGHT | wxTE_MULTILINE | wxTE_WORDWRAP | wxTE_READONLY);
     resultText->SetFont(wxFont(20, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL));
     resultText->SetMargins(7, 7);
     resultText->CanCopy();
@@ -30,7 +48,7 @@ CalculatorFrame::CalculatorFrame(const wxString& title) : wxFrame(nullptr, wxID_
 
 
     for (const auto& label : buttonLabels) {
-        wxButton* button = new wxButton(this, wxID_ANY, label, wxDefaultPosition, wxDefaultSize, wxBORDER_NONE);
+        wxButton* button = new wxButton(calculatorPanel, wxID_ANY, label, wxDefaultPosition, wxDefaultSize, wxBORDER_NONE);
         buttonSizer->Add(button, 1, wxEXPAND);
         button->SetFont(wxFont(12, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL));
         button->SetBackgroundColour(wxColour(220, 220, 220));
@@ -39,9 +57,13 @@ CalculatorFrame::CalculatorFrame(const wxString& title) : wxFrame(nullptr, wxID_
         buttons.push_back(button);
     }
 
-    mainSizer->Add(resultText, 1, wxEXPAND | wxALL, 5);
-    mainSizer->Add(buttonSizer, 3, wxEXPAND | wxALL, 5);
-    SetSizerAndFit(mainSizer);
+    calculatorSizer->Add(resultText, 1, wxEXPAND | wxALL, 5);
+    calculatorSizer->Add(buttonSizer, 3, wxEXPAND | wxALL, 5);
+    calculatorPanel->SetSizerAndFit(calculatorSizer);
+    historyPanel->SetSizerAndFit(historySizer);
+    this->SetSizerAndFit(mainSizer);
+    mainSizer->Add(calculatorPanel, 1, wxEXPAND);
+
 
     burgerMenu = new wxMenu;
     calculatorMode = burgerMenu->Append(wxID_ANY, wxT("Turn on Scientific mode"));
@@ -57,9 +79,36 @@ CalculatorFrame::CalculatorFrame(const wxString& title) : wxFrame(nullptr, wxID_
 
 }
 
+void CalculatorFrame::bindEventHandlers()
+{
+    for (wxButton* button : this->buttons) {
+        button->Bind(wxEVT_BUTTON, &CalculatorFrame::onButtonsClicked, this);
+        button->Bind(wxEVT_ENTER_WINDOW, &CalculatorFrame::OnMouseEnter, this);
+        button->Bind(wxEVT_LEAVE_WINDOW, &CalculatorFrame::OnMouseLeave, this);
+    }
+    Bind(wxEVT_MENU, &CalculatorFrame::ToggleDarkMode, this, darkModeItem->GetId());
+    Bind(wxEVT_CHAR_HOOK, &CalculatorFrame::OnCharHook, this);
+    Bind(wxEVT_MENU, &CalculatorFrame::ToggleScientificCalculatorMode, this, calculatorMode->GetId());
+    Bind(wxEVT_MENU, &CalculatorFrame::ToggleHistoryPanel, this, historyItem->GetId());
+    deleteMemoryButton->Bind(wxEVT_BUTTON, &CalculatorFrame::onButtonClearHistory, this);
+
+}
+
 CalculatorFrame::~CalculatorFrame()
 {
     delete myCalculator;
+}
+
+void CalculatorFrame::onButtonClearHistory(wxCommandEvent& evt) {
+    wxButton* clickedButton = dynamic_cast<wxButton*>(evt.GetEventObject());
+    if (clickedButton) {
+        myCalculator->deleteMemory();
+        updateHistory();
+    }
+    historyPanel->Refresh();
+    historyPanel->Layout();
+    Refresh();
+    Layout();
 }
 
 
@@ -94,6 +143,7 @@ void CalculatorFrame::ToggleDarkMode(wxCommandEvent& evt) {
         resultText->ScrollLines(resultText->GetNumberOfLines());
 
         Refresh();
+        evt.Skip();
    
 }
 
@@ -103,13 +153,11 @@ void CalculatorFrame::ToggleScientificCalculatorMode(wxCommandEvent& evt)
     calculatorMode->SetItemLabel(isScientificOn ? wxT("Turn off Scientific mode") : wxT("Turn on Scientific mode"));
 
     // Usunięcie starych przycisków
-    for (wxButton* button : buttons) {
+    for (wxButton* button : this->buttons) {
         button->Destroy();
     }
     buttons.clear();
-    for (int i = 0; i < buttonLabels.size() - 1; i++) {
-        buttonLabels.pop_back();
-    }
+
 
     // Utworzenie nowych przycisków zgodnie z aktualnym trybem
     if (isScientificOn) {
@@ -140,7 +188,7 @@ void CalculatorFrame::ToggleScientificCalculatorMode(wxCommandEvent& evt)
 
     // Tworzenie nowych przycisków zgodnie z aktualnymi ustawieniami
     for (const auto& label : buttonLabels) {
-        wxButton* button = new wxButton(this, wxID_ANY, label, wxDefaultPosition, wxDefaultSize, wxBORDER_NONE);
+        wxButton* button = new wxButton(calculatorPanel, wxID_ANY, label, wxDefaultPosition, wxDefaultSize, wxBORDER_NONE);
         buttons.push_back(button);
 
         // Dodawanie nowych przycisków do sizer'a
@@ -160,27 +208,14 @@ void CalculatorFrame::ToggleScientificCalculatorMode(wxCommandEvent& evt)
         button->Bind(wxEVT_ENTER_WINDOW, &CalculatorFrame::OnMouseEnter, this);
         button->Bind(wxEVT_LEAVE_WINDOW, &CalculatorFrame::OnMouseLeave, this);
     }
-    Bind(wxEVT_CHAR_HOOK, &CalculatorFrame::OnCharHook, this);
+    calculatorPanel->Layout();
+    calculatorPanel->Refresh();
 
 
     // Wywołanie Layout() oraz Refresh() dla zastosowania zmian
     Layout();
     Refresh();
-
-}
-
-void CalculatorFrame::bindEventHandlers()
-{
-    for (wxButton* button : this->buttons) {
-        button->Bind(wxEVT_BUTTON, &CalculatorFrame::onButtonsClicked, this);
-        button->Bind(wxEVT_ENTER_WINDOW, &CalculatorFrame::OnMouseEnter, this);
-        button->Bind(wxEVT_LEAVE_WINDOW, &CalculatorFrame::OnMouseLeave, this);
-    }
-    Bind(wxEVT_MENU, &CalculatorFrame::ToggleDarkMode, this, darkModeItem->GetId());
-    Bind(wxEVT_CHAR_HOOK, &CalculatorFrame::OnCharHook, this);
-    Bind(wxEVT_MENU, &CalculatorFrame::ToggleScientificCalculatorMode, this, calculatorMode->GetId());
-    Bind(wxEVT_MENU, &CalculatorFrame::ToggleHistoryPanel, this, historyItem->GetId());
-
+    evt.Skip();
 }
 
 void CalculatorFrame::onButtonsClicked(wxCommandEvent& evt)
@@ -261,6 +296,7 @@ void CalculatorFrame::onButtonsClicked(wxCommandEvent& evt)
                 resultFromStringCalc = myCalculator->calculateString();
                 if (myCalculator->isError) {
                     resultText->ChangeValue("incorrect syntax");
+                    myCalculator->isError = false;
                 }
                 else {
                     result.Printf(wxT("%.15Lf"), resultFromStringCalc);
@@ -284,6 +320,7 @@ void CalculatorFrame::onButtonsClicked(wxCommandEvent& evt)
                     myCalculator->saveMemoryToFile(addToMemory);
                 }
             }
+
             if(!myCalculator->isError) resultText->ChangeValue(result);
 
         }
@@ -444,6 +481,9 @@ void CalculatorFrame::OnCharHook(wxKeyEvent& event){
     else if (key == '-') {
         label = "-";
     }
+    else if (key == '/') {
+        label = '/';
+    }
     else if (key == '.') {
         label = ".";
     }
@@ -471,9 +511,42 @@ void CalculatorFrame::OnCharHook(wxKeyEvent& event){
     event.Skip();
 }
 
+void CalculatorFrame::updateHistory() {
+    // Clear the existing history
+    for (wxTextCtrl* textctrl : this->textCtrlList) {
+        textctrl->Destroy();
+    }
+    textCtrlList.clear();
+
+    // Retrieve the latest history from the calculator
+    std::vector<std::string> vectorsMemory = myCalculator->getVectorMemory();
+
+    // Add the latest history to the history panel
+    for (std::string historyOne : vectorsMemory) {
+        if (historyOne != "") {
+            wxTextCtrl* textctrl = new wxTextCtrl(historyPanel, wxID_ANY, historyOne);
+            historySizer->Add(textctrl, 0, wxEXPAND | wxALL, 5);
+            textCtrlList.push_back(textctrl);
+        }
+    }
+}
+
 void CalculatorFrame::ToggleHistoryPanel(wxCommandEvent& evt) {
     isHistoryVisible = !isHistoryVisible;
+    if (isHistoryVisible) {
+        calculatorPanel->Hide();
+        historyPanel->Show();
+        mainSizer->Remove(0);
+        mainSizer->Add(historyPanel, 1, wxEXPAND);
 
+    }
+    else {
+        historyPanel->Hide();
+        calculatorPanel->Show();
+        mainSizer->Remove(0);
+        mainSizer->Add(calculatorPanel, 1, wxEXPAND);
+    }
+    updateHistory();
     Layout(); // Re-layout to adjust the visibility changes
     Refresh(); // Refresh to apply changes
     evt.Skip();
