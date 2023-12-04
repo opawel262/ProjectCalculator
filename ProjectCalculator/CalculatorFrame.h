@@ -9,7 +9,7 @@ class CalculatorFrame : public wxFrame
 {
 public:
 	CalculatorFrame(const wxString& title);
-	virtual ~CalculatorFrame();
+	~CalculatorFrame();
 
 
 private:
@@ -33,7 +33,6 @@ private:
 
 	void onButtonClearHistory(wxCommandEvent& evt);
 
-
 	bool isDarkMode;
 	bool isScientificOn;
 	bool isHistoryVisible;
@@ -54,7 +53,7 @@ private:
 	wxMenuItem* historyItem;
 	wxMenuItem* calculatorMode;
 	wxMenuBar* menuBar;
-	wxPanel* historyPanel;
+	wxScrolledWindow* historyPanel;
 	wxPanel* calculatorPanel;
 	wxButton* deleteMemoryButton;
 	std::vector<wxTextCtrl*> textCtrlList;
