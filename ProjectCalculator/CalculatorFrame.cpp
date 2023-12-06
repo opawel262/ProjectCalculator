@@ -353,7 +353,7 @@ void CalculatorFrame::onButtonsClicked(wxCommandEvent& evt)
                     resultText->ChangeValue(result);
                 }
             }
-
+ 
             
 
         }
