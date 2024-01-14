@@ -15,7 +15,7 @@ Welcome to the Educational Calculator project! This project is a simple calculat
 
 ## Introduction
 
-This calculator project is part of an educational initiative to teach C++ programming and GUI development using wxWidgets. It covers fundamental concepts and best practices for building a simple calculator application with both basic and scientific functionalities.
+This calculator project is part of an educational initiative to teach C++ programming and GUI development using wxWidgets. It covers fundamental concepts for building a simple calculator application with both basic and scientific functionalities.
 
 ## Features
 
